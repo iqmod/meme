@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تحدي الرياضيات - Math Battle</title>
+    <style>
+        :root {
+            --blue: #3498db;
+            --red: #e74c3c;
+            --dark: #2c3e50;
+            --light: #ecf0f1;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--dark);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .game-card {
+            background: white;
+            color: var(--dark);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+            position: relative;
+        }
+
+        .scores {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+
+        .score-box {
+            padding: 10px 20px;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            transition: transform 0.3s;
+        }
+
+        .blue-team { background: var(--blue); }
+        .red-team { background: var(--red); }
+
+        .active-turn {
+            transform: scale(1.1);
+            box-shadow: 0 0 15px currentColor;
+            border: 3px solid #fff;
+        }
+
+        #turn-indicator {
+            margin: 15px 0;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        #question {
+            font-size: 2rem;
+            margin: 25px 0;
+            font-weight: 800;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .option-btn {
+            background: var(--light);
+            border: 2px solid #ddd;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+
+        .option-btn:hover {
+            background: #dfe6e9;
+            transform: translateY(-3px);
+            border-color: var(--blue);
+        }
+
+        .invite-section {
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+
+        .invite-btn {
+            background: none;
+            border: 1px solid #ccc;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        /* أنيميشن عند الإجابة */
+        .correct { background: #2ecc71 !important; color: white !important; }
+        .wrong { background: #e74c3c !important; color: white !important; }
+    </style>
+</head>
+<body>
+
+<div class="game-card">
+    <div class="scores">
+        <div id="blue-box" class="score-box blue-team active-turn">
+            الأزرق: <span id="blueScore">0</span>
+        </div>
+        <div id="red-box" class="score-box red-team">
+            الأحمر: <span id="redScore">0</span>
+        </div>
+    </div>
+
+    <div id="turn-indicator">دور الفريق الأزرق 🔵</div>
+    
+    <div id="question">جاري التحميل...</div>
+
+    <div class="options-grid" id="options">
+        </div>
+
+    <div class="invite-section">
+        <button class="invite-btn" onclick="copyInvite()">🔗 انسخ رابط اللعبة وأرسله لصديقك</button>
+    </div>
+</div>
+
+<script>
+    let blueScore = 0;
+    let redScore = 0;
+    let currentTeam = "blue"; 
+    let currentAnswer = 0;
+
+    // دالة توليد سؤال جديد
+    function generateQuestion() {
+        const num1 = Math.floor(Math.random() * 50) + 1;
+        const num2 = Math.floor(Math.random() * 50) + 1;
+        currentAnswer = num1 + num2;
+
+        document.getElementById("question").innerText = `${num1} + ${num2}`;
+
+        // توليد اختيارات ذكية (قريبة من الإجابة الصحيحة)
+        let options = new Set();
+        options.add(currentAnswer);
+        while(options.size < 4) {
+            let offset = Math.floor(Math.random() * 10) - 5;
+            let fake = currentAnswer + (offset === 0 ? 3 : offset);
+            if(fake > 0) options.add(fake);
+        }
+
+        // تحويل Set إلى مصفوفة وخلطها
+        const shuffledOptions = Array.from(options).sort(() => Math.random() - 0.5);
+        
+        const optionsDiv = document.getElementById("options");
+        optionsDiv.innerHTML = "";
+        
+        shuffledOptions.forEach(opt => {
+            const btn = document.createElement("button");
+            btn.className = "option-btn";
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(opt, btn);
+            optionsDiv.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(selected, btn) {
+        // منع الضغط المتكرر
+        const buttons = document.querySelectorAll('.option-btn');
+        buttons.forEach(b => b.disabled = true);
+
+        if (selected === currentAnswer) {
+            btn.classList.add("correct");
+            if (currentTeam === "blue") {
+                blueScore++;
+                document.getElementById("blueScore").innerText = blueScore;
+            } else {
+                redScore++;
+                document.getElementById("redScore").innerText = redScore;
+            }
+        } else {
+            btn.classList.add("wrong");
+        }
+
+        // الانتظار قليلاً قبل الانتقال للسؤال التالي
+        setTimeout(() => {
+            switchTeam();
+            generateQuestion();
+        }, 800);
+    }
+
+    function switchTeam() {
+        currentTeam = currentTeam === "blue" ? "red" : "blue";
+        
+        // تحديث الواجهة
+        const blueBox = document.getElementById("blue-box");
+        const redBox = document.getElementById("red-box");
+        const indicator = document.getElementById("turn-indicator");
+
+        if (currentTeam === "blue") {
+            blueBox.classList.add("active-turn");
+            redBox.classList.remove("active-turn");
+            indicator.innerText = "دور الفريق الأزرق 🔵";
+        } else {
+            redBox.classList.add("active-turn");
+            blueBox.classList.remove("active-turn");
+            indicator.innerText = "دور الفريق الأحمر 🔴";
+        }
+    }
+
+    function copyInvite() {
+        const url = window.location.href;
+        navigator.clipboard.writeText(url);
+        alert("تم نسخ الرابط! أرسله لصديقك ليلعب معك على نفس الجهاز.");
+    }
+
+    // ابدأ اللعبة
+    generateQuestion();
+</script>
+
+</body>
+</html>
